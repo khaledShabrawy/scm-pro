@@ -344,7 +344,7 @@ export default function DemandPage() {
               {/* Month headers */}
               <div style={{ display:"grid", gridTemplateColumns:"90px repeat(12,1fr)", gap:2, marginBottom:2 }}>
                 <div/>
-                {MONTHS_SHORT.map(m=><div key={m} style={{ fontSize:7.5, color:"var(--text-muted)", textAlign:"center", fontWeight:700 }}>{m}</div>)}
+                {MONTHS_SHORT.map((m,i)=><div key={i} style={{ fontSize:7.5, color:"var(--text-muted)", textAlign:"center", fontWeight:700 }}>{m}</div>)}
               </div>
               {ERROR_HEAT.map(row => (
                 <div key={row.cat} style={{ display:"grid", gridTemplateColumns:"90px repeat(12,1fr)", gap:2, marginBottom:2 }}>

@@ -8,6 +8,7 @@ const navItems = [
   { href: "/sop",      icon: "⚖️", en: "S&OP Balance",      ar: "التوازن",             color: "#1A8A8A" },
   { href: "/inventory",icon: "📦", en: "Inventory",         ar: "المخزون",             color: "#C9A84C" },
   { href: "/distribution",icon:"🚛",en:"Distribution",      ar: "التوزيع",             color: "#2EA064" },
+  { href: "/route-planning",icon:"🗺️",en:"Route Planning",  ar: "تخطيط المسارات",     color: "#E07B2A" },
   { href: "/analytics",icon: "📈", en: "Analytics",         ar: "التحليلات",           color: "#60B8D4" },
   { href: "/settings", icon: "⚙️", en: "Settings",          ar: "الإعدادات",           color: "#9BA3B2" },
 ];

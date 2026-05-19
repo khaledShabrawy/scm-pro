@@ -27,14 +27,17 @@ const EOQ_ITEMS = [
 ];
 
 // Compute APICS metrics for each SKU
-const INV_TABLE = EOQ_ITEMS.map(item => {
+// Deterministic on-hand multipliers per SKU (avoids SSR hydration mismatch)
+const ON_HAND_MULT = [1.77, 1.65, 1.42, 1.53, 1.38, 1.61];
+
+const INV_TABLE = EOQ_ITEMS.map((item, idx) => {
   const Z = SERVICE_LEVEL_Z[item.sl];
   const eoqVal   = Math.round(Math.sqrt((2 * item.D * item.S) / (item.i * item.C)));
   const ss       = Math.round(safetyStock(Z, item.avgLT, item.sigmaD, item.avgDemand, item.sigmaLT));
   const rop      = Math.round(reorderPoint(item.avgDemand / 30, item.avgLT, ss));
   const avgInv   = Math.round(avgInventory(eoqVal, ss));
   const annCost  = Math.round(totalInventoryCost(item.D, eoqVal, item.S, item.i, item.C));
-  const onHand   = Math.round(ss * (1.2 + Math.random() * 0.6));
+  const onHand   = Math.round(ss * ON_HAND_MULT[idx]);
   const status   = onHand < rop ? "Reorder" : onHand < ss * 1.5 ? "Low" : "OK";
   return { ...item, eoqVal, ss, rop, avgInv, annCost, onHand, Z, status };
 });

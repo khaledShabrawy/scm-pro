@@ -377,10 +377,6 @@ export default function SupplyPage() {
                   {t("Optimal Production Plan", "خطة الإنتاج المثلى", lang)}
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 4 }}>
-                  {/* Header */}
-                  {["Variable", "SKU Group", "Qty (units)", "Cost/unit (EGP)", "Total Cost (EGP)", "Status"].map((h, i) => (
-                    i < 5 ? null : null
-                  ))}
                   {["Variable", "Qty (units)", "Cost/unit", "Total Cost", "Status"].map(h => (
                     <div key={h} style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted)", padding: "6px 8px", background: "rgba(123,94,167,0.08)", borderRadius: 4 }}>{h}</div>
                   ))}

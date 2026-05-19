@@ -171,9 +171,9 @@ export default function SopPage() {
 
           {/* ── BALANCE TABLE ── */}
           {activeTab === "balance" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16, width: "100%", minWidth: 0 }}>
               {/* Chart */}
-              <div style={{ background: "var(--bg-card)", borderRadius: 10, border: "1px solid rgba(26,138,138,0.2)", padding: "16px 20px" }}>
+              <div style={{ background: "var(--bg-card)", borderRadius: 10, border: "1px solid rgba(26,138,138,0.2)", padding: "16px 20px", width: "100%", minWidth: 0, boxSizing: "border-box" }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>
                   {t("Demand vs Supply vs Inventory", "الطلب مقابل الإمداد مقابل المخزون", lang)}
                 </div>

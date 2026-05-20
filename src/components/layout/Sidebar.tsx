@@ -13,11 +13,24 @@ const navItems = [
   { href: "/settings", icon: "⚙️", en: "Settings",          ar: "الإعدادات",           color: "#9BA3B2" },
 ];
 
-export default function Sidebar({ lang }: { lang: "en" | "ar" }) {
+interface SidebarProps {
+  lang: "en" | "ar";
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
+export default function Sidebar({ lang, isOpen = false, onClose }: SidebarProps) {
   const pathname = usePathname();
 
   return (
-    <aside style={{
+    <>
+      {/* Mobile overlay */}
+      <div
+        className={`scm-sidebar-overlay${isOpen ? " is-open" : ""}`}
+        onClick={onClose}
+      />
+
+    <aside className={`scm-sidebar${isOpen ? " is-open" : ""}`} style={{
       width: 240,
       minHeight: "100vh",
       background: "#060B14",
@@ -89,5 +102,6 @@ export default function Sidebar({ lang }: { lang: "en" | "ar" }) {
         </div>
       </div>
     </aside>
+    </>
   );
 }

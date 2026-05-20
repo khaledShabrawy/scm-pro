@@ -8,6 +8,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
+import { DEFAULT_ALERTS } from "@/lib/notifications";
 // Dynamically import GoogleMapsPanel (browser-only: Maps API + Drawing Library)
 const GoogleMapsPanel = dynamic(
   () => import("@/components/maps/GoogleMapsPanel"),
@@ -125,6 +126,8 @@ export default function RoutePlanningPage() {
   const [lang, setLang]       = useState<"en"|"ar">("en");
   const [activeTab, setActiveTab] = useState<"territory"|"beat"|"service"|"sequence">("territory");
   const [selectedRep, setSelectedRep] = useState("R1");
+  const [beatView, setBeatView]   = useState<"table"|"map">("table");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const tabs = [
     { id:"territory", en:"Territory Builder",    ar:"بناء المناطق" },
@@ -147,10 +150,14 @@ export default function RoutePlanningPage() {
 
   return (
     <div style={{ display:"flex", height:"100vh", background:"var(--bg-primary)", overflow:"hidden" }}>
-      <Sidebar lang={lang} />
+      <Sidebar lang={lang} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
         <Navbar lang={lang} onLangChange={() => setLang(l => l==="en"?"ar":"en")}
-          pageTitle="Route Planning" pageAr="تخطيط المسارات" module="route-planning" />
+          pageTitle="Route Planning" pageAr="تخطيط المسارات" module="route-planning"
+          exportData={REPS.map(r => ({ ID: r.id, Name: r.name, Zone: r.zone, Customers: r.customers, Orders: r.orders, "Service Hrs": r.serviceHrs, "KM/day": r.km }))}
+          exportFilename="route-planning-reps"
+          alerts={DEFAULT_ALERTS}
+          onMenuToggle={() => setSidebarOpen(o => !o)} />
         <main style={{ flex:1, overflowY:"auto", padding:"20px 24px", display:"flex", flexDirection:"column", gap:20 }}>
 
           {/* ── KPI Banner ── */}
@@ -295,6 +302,39 @@ export default function RoutePlanningPage() {
           {/* ══════════════════════════════════════════════════════ */}
           {activeTab === "beat" && (
             <div style={{ display:"flex", flexDirection:"column", gap:16, width:"100%", minWidth:0 }}>
+
+              {/* ── View toggle (Table / Map) ── */}
+              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                <span style={{ fontSize:11, color:"var(--text-muted)" }}>{t("View:","عرض:",lang)}</span>
+                {([["table","📊 "+t("Table","جدول",lang)],["map","🗺️ "+t("Map","خريطة",lang)]] as const).map(([v,label]) => (
+                  <button key={v} onClick={()=>setBeatView(v)} style={{
+                    padding:"5px 14px", fontSize:11, fontWeight:700, cursor:"pointer", borderRadius:6,
+                    border:`1px solid ${v===beatView?"#2EA064":"rgba(46,160,100,0.2)"}`,
+                    background: v===beatView?"rgba(46,160,100,0.12)":"transparent",
+                    color: v===beatView?"#2EA064":"var(--text-muted)",
+                    transition:"all 0.2s",
+                  }}>{label}</button>
+                ))}
+              </div>
+
+              {/* ── Map view ── */}
+              {beatView === "map" && (
+                <div style={{ background:"var(--bg-card)", borderRadius:10, border:"1px solid rgba(46,160,100,0.2)", padding:"16px 20px", minWidth:0 }}>
+                  <div style={{ marginBottom:10 }}>
+                    <div style={{ fontSize:13, fontWeight:800, color:"#2EA064" }}>
+                      🗺️ {t("Beat Plan Map — Customer Visit Schedule","خريطة خطة الزيارات — جدول زيارات العملاء",lang)}
+                    </div>
+                    <div style={{ fontSize:10, color:"var(--text-muted)", marginTop:2 }}>
+                      {t("Use Day filter to see which customers each rep visits on a given day · Click a marker for details","استخدم فلتر اليوم لرؤية عملاء كل مندوب يومياً · انقر على العلامة للتفاصيل",lang)}
+                    </div>
+                  </div>
+                  <GoogleMapsPanel mode="beat" lang={lang} />
+                </div>
+              )}
+
+              {/* ── Table view ── */}
+              {beatView === "table" && (
+              <>
               <div style={{ background:"var(--bg-card)", borderRadius:10, border:"1px solid rgba(46,160,100,0.2)", padding:"16px 20px", minWidth:0 }}>
                 <div style={{ display:"flex", justifyContent:"space-between", marginBottom:16 }}>
                   <div>
@@ -409,6 +449,7 @@ export default function RoutePlanningPage() {
                   </BarChart>
                 </ResponsiveContainer>
               </div>
+              </> )} {/* end beatView === "table" */}
             </div>
           )}
 

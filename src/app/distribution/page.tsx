@@ -6,6 +6,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, LineChart, Line, ComposedChart, Area,
 } from "recharts";
+import { DEFAULT_ALERTS } from "@/lib/notifications";
 
 // ─── APICS Distribution / SCOR + Vonoy VRP + Ad Hoc Market Intelligence ───────
 // Perfect Order = OTD × Quality × Complete × Documentation
@@ -149,6 +150,7 @@ const MERCH_TREND = [
 
 export default function DistributionPage() {
   const [lang, setLang] = useState<"en" | "ar">("en");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"overview"|"routes"|"vrp"|"fleet"|"market"|"merch"|"rtm">("overview");
 
   const totalCap    = DCS.reduce((s, dc) => s + dc.capacity, 0);
@@ -176,10 +178,14 @@ export default function DistributionPage() {
 
   return (
     <div style={{ display: "flex", height: "100vh", background: "var(--bg-primary)", overflow: "hidden" }}>
-      <Sidebar lang={lang} />
+      <Sidebar lang={lang} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         <Navbar lang={lang} onLangChange={() => setLang(l => l === "en" ? "ar" : "en")}
-          pageTitle="Distribution" pageAr="التوزيع" module="distribution" />
+          pageTitle="Distribution" pageAr="التوزيع" module="distribution"
+          exportData={CENSUS.map(c => ({ Region: c.region, "Retail Stores": c.retail, "Horeca": c.horeca, "Total": c.retail + c.horeca, "Gold": c.gold, "Silver": c.silver, "Bronze": c.bronze, "Coverage %": c.coverage }))}
+          exportFilename="distribution-census"
+          alerts={DEFAULT_ALERTS}
+          onMenuToggle={() => setSidebarOpen(o => !o)} />
         <main style={{ flex: 1, overflowY: "auto", padding: "20px 24px", display: "flex", flexDirection: "column", gap: 20 }}>
 
           {/* KPIs */}

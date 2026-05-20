@@ -7,6 +7,7 @@ import {
   ResponsiveContainer, LineChart, Line, ReferenceLine, ComposedChart, Area,
 } from "recharts";
 import { requiredProduction, closingInventory } from "@/lib/apics-algorithms";
+import { DEFAULT_ALERTS } from "@/lib/notifications";
 
 // ─── S&OP 5-Step APICS Process ───────────────────────────
 // Step 1: Data Gathering → Step 2: Demand Review →
@@ -71,6 +72,7 @@ const priorityColor = (p: string) =>
 
 export default function SopPage() {
   const [lang, setLang] = useState<"en" | "ar">("en");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"balance" | "families" | "scenarios" | "actions">("balance");
   const [activeScenario, setActiveScenario] = useState("base");
 
@@ -100,10 +102,14 @@ export default function SopPage() {
 
   return (
     <div style={{ display: "flex", height: "100vh", background: "var(--bg-primary)", overflow: "hidden" }}>
-      <Sidebar lang={lang} />
+      <Sidebar lang={lang} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         <Navbar lang={lang} onLangChange={() => setLang(l => l === "en" ? "ar" : "en")}
-          pageTitle="S&OP Balance" pageAr="توازن العرض والطلب" module="sop" />
+          pageTitle="S&OP Balance" pageAr="توازن العرض والطلب" module="sop"
+          exportData={SOP_DATA.map(d => ({ Month: d.month, Forecast: d.forecast, Supply: d.supply, Gap: d.gap, "Opening Inv": d.openingInv, "Closing Inv": d.closingInv, Backlog: d.backlog }))}
+          exportFilename="sop-balance"
+          alerts={DEFAULT_ALERTS}
+          onMenuToggle={() => setSidebarOpen(o => !o)} />
         <main style={{ flex: 1, overflowY: "auto", padding: "20px 24px", display: "flex", flexDirection: "column", gap: 20 }}>
 
           {/* ── KPI Cards ── */}

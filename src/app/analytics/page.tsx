@@ -8,6 +8,7 @@ import {
   RadarChart, PolarGrid, PolarAngleAxis, Radar, ScatterChart, Scatter,
 } from "recharts";
 import { cashToCash, inventoryTurns, dio, dso, dpo } from "@/lib/apics-algorithms";
+import { DEFAULT_ALERTS } from "@/lib/notifications";
 
 // ─── Analytics — 5D OLAP Cube + SCOR Financial Metrics ───
 // Dimensions: Time × Product × Geography × Customer × Sales Force
@@ -79,6 +80,7 @@ const ABC_SCATTER = [
 
 export default function AnalyticsPage() {
   const [lang, setLang] = useState<"en" | "ar">("en");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeDim, setActiveDim] = useState<"time" | "product" | "geo" | "scor">("time");
 
   const totalRev = TIME_DATA.reduce((s, r) => s + r.revenue, 0);
@@ -102,10 +104,14 @@ export default function AnalyticsPage() {
 
   return (
     <div style={{ display: "flex", height: "100vh", background: "var(--bg-primary)", overflow: "hidden" }}>
-      <Sidebar lang={lang} />
+      <Sidebar lang={lang} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         <Navbar lang={lang} onLangChange={() => setLang(l => l === "en" ? "ar" : "en")}
-          pageTitle="Analytics" pageAr="التحليلات" module="analytics" />
+          pageTitle="Analytics" pageAr="التحليلات" module="analytics"
+          exportData={TIME_DATA.map(d => ({ Month: d.m, "Revenue (EGP)": d.revenue, "COGS (EGP)": d.cogs, "Gross Profit (EGP)": d.gp, "Forecast (EGP)": d.forecast }))}
+          exportFilename="analytics-financial"
+          alerts={DEFAULT_ALERTS}
+          onMenuToggle={() => setSidebarOpen(o => !o)} />
         <main style={{ flex: 1, overflowY: "auto", padding: "20px 24px", display: "flex", flexDirection: "column", gap: 20 }}>
 
           {/* KPIs */}

@@ -8,6 +8,7 @@ import {
   PolarAngleAxis, Radar, LineChart, Line, ReferenceLine,
 } from "recharts";
 import { utilization, efficiency, ratedCapacity, safetyStock, SERVICE_LEVEL_Z } from "@/lib/apics-algorithms";
+import { DEFAULT_ALERTS } from "@/lib/notifications";
 
 // ─── APICS Capacity Utilization thresholds ───────────────
 const util = (a: number, b: number) => Math.round((a / b) * 100);
@@ -114,6 +115,7 @@ const poStatus = (s: string) =>
 
 export default function SupplyPage() {
   const [lang, setLang] = useState<"en" | "ar">("en");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"capacity" | "lp" | "suppliers" | "procurement">("capacity");
 
   // APICS KPIs
@@ -172,7 +174,7 @@ export default function SupplyPage() {
 
   return (
     <div style={{ display: "flex", height: "100vh", background: "var(--bg-primary)", overflow: "hidden" }}>
-      <Sidebar lang={lang} />
+      <Sidebar lang={lang} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         <Navbar
           lang={lang}
@@ -180,6 +182,10 @@ export default function SupplyPage() {
           pageTitle="Supply Planning"
           pageAr="تخطيط الإمداد"
           module="supply"
+          exportData={LP_VARS.map(v => ({ Variable: v.var, "Qty (units)": v.qty, "Cost/unit (EGP)": v.cost, "Total Cost (EGP)": v.total, Status: v.status }))}
+          exportFilename="supply-plan"
+          alerts={DEFAULT_ALERTS}
+          onMenuToggle={() => setSidebarOpen(o => !o)}
         />
         <main style={{ flex: 1, overflowY: "auto", padding: "20px 24px", display: "flex", flexDirection: "column", gap: 20 }}>
 

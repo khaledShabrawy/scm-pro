@@ -2,6 +2,7 @@
 import { useState } from "react";
 import Sidebar from "@/components/layout/Sidebar";
 import Navbar from "@/components/layout/Navbar";
+import { DEFAULT_ALERTS } from "@/lib/notifications";
 
 const t = (en: string, ar: string, lang: "en" | "ar") => lang === "ar" ? ar : en;
 
@@ -16,6 +17,7 @@ type AlgoConfigs = Record<string, AlgoConfig>;
 
 export default function SettingsPage() {
   const [lang, setLang]   = useState<"en"|"ar">("en");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"algorithms"|"inventory"|"apics"|"system">("algorithms");
 
   // Algorithm settings
@@ -83,10 +85,14 @@ export default function SettingsPage() {
 
   return (
     <div style={{ display: "flex", height: "100vh", background: "var(--bg-primary)", overflow: "hidden" }}>
-      <Sidebar lang={lang} />
+      <Sidebar lang={lang} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         <Navbar lang={lang} onLangChange={() => setLang(l => l === "en" ? "ar" : "en")}
-          pageTitle="Settings" pageAr="الإعدادات" module="settings" />
+          pageTitle="Settings" pageAr="الإعدادات" module="settings"
+          exportData={SERVICE_LEVELS.map(sl => ({ "Service Level %": sl, "Z-Value": Z_VALUES[sl] }))}
+          exportFilename="settings-parameters"
+          alerts={DEFAULT_ALERTS}
+          onMenuToggle={() => setSidebarOpen(o => !o)} />
         <main style={{ flex: 1, overflowY: "auto", padding: "20px 24px", display: "flex", flexDirection: "column", gap: 20 }}>
 
           {/* Header */}

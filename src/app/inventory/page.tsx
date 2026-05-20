@@ -10,6 +10,7 @@ import {
   safetyStock, reorderPoint, avgInventory, eoq, totalInventoryCost,
   inventoryTurns, dio, SERVICE_LEVEL_Z,
 } from "@/lib/apics-algorithms";
+import { DEFAULT_ALERTS } from "@/lib/notifications";
 
 // ─── APICS Inventory Types ────────────────────────────────
 // Cycle Stock | Safety Stock | Anticipation | Pipeline | Hedge | MRO
@@ -79,6 +80,7 @@ const statusColor = (s: string) =>
 
 export default function InventoryPage() {
   const [lang, setLang] = useState<"en" | "ar">("en");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"eoq" | "types" | "trend" | "scor">("eoq");
   const [slFilter, setSlFilter] = useState<number | "all">("all");
 
@@ -106,10 +108,14 @@ export default function InventoryPage() {
 
   return (
     <div style={{ display: "flex", height: "100vh", background: "var(--bg-primary)", overflow: "hidden" }}>
-      <Sidebar lang={lang} />
+      <Sidebar lang={lang} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         <Navbar lang={lang} onLangChange={() => setLang(l => l === "en" ? "ar" : "en")}
-          pageTitle="Inventory" pageAr="إدارة المخزون" module="inventory" />
+          pageTitle="Inventory" pageAr="إدارة المخزون" module="inventory"
+          exportData={INV_TABLE.map(d => ({ SKU: d.sku, Name: d.name, EOQ: d.eoqVal, "Safety Stock": d.ss, ROP: d.rop, "On Hand": d.onHand, Status: d.status, "Annual Cost (EGP)": d.annCost }))}
+          exportFilename="inventory-eoq"
+          alerts={DEFAULT_ALERTS}
+          onMenuToggle={() => setSidebarOpen(o => !o)} />
         <main style={{ flex: 1, overflowY: "auto", padding: "20px 24px", display: "flex", flexDirection: "column", gap: 20 }}>
 
           {/* ── KPI Cards ── */}

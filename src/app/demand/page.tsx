@@ -7,6 +7,7 @@ import {
   CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine
 } from "recharts";
 import { holtWinters, wmape, trackingSignal, bias } from "@/lib/apics-algorithms";
+import { DEFAULT_ALERTS } from "@/lib/notifications";
 
 // ─── Mock historical data (12 months actual) ─────────────
 const ACTUAL = [28400,31200,35800,42100,38600,44200,51800,48900,43200,39800,45600,52300];
@@ -72,6 +73,7 @@ const TOP_DEVIATIONS = [
 
 export default function DemandPage() {
   const [lang, setLang] = useState<"en"|"ar">("en");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [unit, setUnit] = useState<"units"|"revenue">("units");
   const [selAlgo, setSelAlgo] = useState("ens");
 
@@ -94,7 +96,7 @@ export default function DemandPage() {
 
   return (
     <div style={{ display:"flex", height:"100vh", overflow:"hidden", background:"var(--bg-primary)" }}>
-      <Sidebar lang={lang} />
+      <Sidebar lang={lang} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
         <Navbar
           lang={lang}
@@ -102,6 +104,10 @@ export default function DemandPage() {
           pageTitle="Demand Planning"
           pageAr="تخطيط الطلب"
           module="demand"
+          exportData={chartData.map(d => ({ Month: d.month, "Actual Units": d.actual ?? "", "Forecast (HW)": d.forecast, "Last Year": d.lastYear ?? "" }))}
+          exportFilename="demand-forecast"
+          alerts={DEFAULT_ALERTS}
+          onMenuToggle={() => setSidebarOpen(o => !o)}
         />
         <main style={{ flex:1, overflowY:"auto", padding:"16px 20px" }}>
 
@@ -344,7 +350,7 @@ export default function DemandPage() {
               {/* Month headers */}
               <div style={{ display:"grid", gridTemplateColumns:"90px repeat(12,1fr)", gap:2, marginBottom:2 }}>
                 <div/>
-                {MONTHS_SHORT.map(m=><div key={m} style={{ fontSize:7.5, color:"var(--text-muted)", textAlign:"center", fontWeight:700 }}>{m}</div>)}
+                {MONTHS_SHORT.map((m,i)=><div key={i} style={{ fontSize:7.5, color:"var(--text-muted)", textAlign:"center", fontWeight:700 }}>{m}</div>)}
               </div>
               {ERROR_HEAT.map(row => (
                 <div key={row.cat} style={{ display:"grid", gridTemplateColumns:"90px repeat(12,1fr)", gap:2, marginBottom:2 }}>

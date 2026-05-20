@@ -1,12 +1,26 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState } from "react";
+import dynamic from "next/dynamic";
 import Sidebar from "@/components/layout/Sidebar";
 import Navbar from "@/components/layout/Navbar";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-  ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis,
-  PolarRadiusAxis,
+  ResponsiveContainer,
 } from "recharts";
+
+// Dynamically import GoogleMapsPanel (browser-only: Maps API + Drawing Library)
+const GoogleMapsPanel = dynamic(
+  () => import("@/components/maps/GoogleMapsPanel"),
+  { ssr: false, loading: () => (
+    <div style={{ width:"100%", height:520, background:"var(--bg-card)", borderRadius:10,
+      display:"flex", alignItems:"center", justifyContent:"center", gap:12 }}>
+      <div style={{ width:24, height:24, border:"3px solid #E07B2A", borderTopColor:"transparent",
+        borderRadius:"50%", animation:"spin 0.9s linear infinite" }} />
+      <span style={{ color:"var(--text-muted)", fontSize:13 }}>Loading map…</span>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    </div>
+  )}
+);
 
 // ─── Roadnet-style Route Planning ────────────────────────────────────────────
 // Territory Builder · Beat Plan Generator · Service Time Matrix · Day Sequencing
@@ -90,57 +104,7 @@ const SVC_MATRIX = [
 const VISIT_WEIGHT = [1.5, 2.0, 3.0, 1.0, 1.5, 0.5];
 const CUST_COUNT   = [18,  124, 210, 42,  36,  12];
 
-// ── 4. DAY SEQUENCING ─────────────────────────────────────────────────────────
-type Stop = { id: string; name: string; x: number; y: number; type: string; window: string; svcMin: number };
-
-// Ahmed's Saturday route — before and after sequencing
-const STOPS_BEFORE: Stop[] = [
-  { id:"C01", name:"Al Mokhtar Mkt",    x:78,  y:32,  type:"Supermarket", window:"08:00-11:00", svcMin:45 },
-  { id:"C02", name:"Hassan Grocery",    x:24,  y:61,  type:"Grocery",     window:"09:00-13:00", svcMin:25 },
-  { id:"C03", name:"Nile Kiosk",        x:91,  y:72,  type:"Kiosk",       window:"07:00-18:00", svcMin:10 },
-  { id:"C04", name:"Star Pharmacy",     x:42,  y:18,  type:"Pharmacy",    window:"10:00-14:00", svcMin:15 },
-  { id:"C05", name:"Sakkara Hotel",     x:15,  y:84,  type:"Horeca",      window:"08:00-12:00", svcMin:30 },
-  { id:"C06", name:"Delta Grocery",     x:58,  y:45,  type:"Grocery",     window:"09:00-15:00", svcMin:25 },
-  { id:"C07", name:"Sunrise Super",     x:35,  y:28,  type:"Supermarket", window:"08:00-11:00", svcMin:45 },
-  { id:"C08", name:"Quick Kiosk #2",    x:68,  y:88,  type:"Kiosk",       window:"07:00-18:00", svcMin:10 },
-  { id:"C09", name:"Ramses Wholesale",  x:12,  y:42,  type:"Wholesale",   window:"07:00-10:00", svcMin:60 },
-  { id:"C10", name:"Victory Pharmacy",  x:82,  y:55,  type:"Pharmacy",    window:"11:00-15:00", svcMin:15 },
-  { id:"C11", name:"Tahrir Grocery",    x:48,  y:76,  type:"Grocery",     window:"09:00-17:00", svcMin:25 },
-  { id:"C12", name:"City Café",         x:22,  y:68,  type:"Horeca",      window:"10:00-14:00", svcMin:30 },
-  { id:"C13", name:"Maadi Supermarket", x:72,  y:14,  type:"Supermarket", window:"08:00-12:00", svcMin:45 },
-  { id:"C14", name:"Corner Kiosk",      x:56,  y:91,  type:"Kiosk",       window:"07:00-18:00", svcMin:10 },
-  { id:"C15", name:"MedCare Pharmacy",  x:31,  y:52,  type:"Pharmacy",    window:"09:00-14:00", svcMin:15 },
-  { id:"C16", name:"Sphinx Grocery",    x:88,  y:36,  type:"Grocery",     window:"10:00-16:00", svcMin:25 },
-];
-
-// Nearest-neighbor sequencing from depot (x:0, y:50)
-function sequenceStops(stops: Stop[]): Stop[] {
-  const result: Stop[] = [];
-  const remaining = [...stops];
-  let cx = 0, cy = 50;
-  while (remaining.length > 0) {
-    let best = 0, bestDist = Infinity;
-    remaining.forEach((s, i) => {
-      const d = Math.sqrt((s.x-cx)**2 + (s.y-cy)**2);
-      if (d < bestDist) { bestDist = d; best = i; }
-    });
-    const chosen = remaining.splice(best, 1)[0];
-    result.push(chosen);
-    cx = chosen.x; cy = chosen.y;
-  }
-  return result;
-}
-
-function totalDist(stops: Stop[], sx=0, sy=50): number {
-  let d = 0, px = sx, py = sy;
-  stops.forEach(s => { d += Math.sqrt((s.x-px)**2 + (s.y-py)**2); px=s.x; py=s.y; });
-  return Math.round(d * 1.8); // scale to km
-}
-
-const STOPS_AFTER = sequenceStops([...STOPS_BEFORE]);
-const distBefore  = totalDist(STOPS_BEFORE);
-const distAfter   = totalDist(STOPS_AFTER);
-const saving      = Math.round((1 - distAfter/distBefore) * 100);
+// ── 4. DAY SEQUENCING — handled by GoogleMapsPanel (real coordinates + Haversine) ──
 
 // ── Color helpers ─────────────────────────────────────────────────────────────
 const typeColor = (type: string) =>
@@ -161,7 +125,6 @@ export default function RoutePlanningPage() {
   const [lang, setLang]       = useState<"en"|"ar">("en");
   const [activeTab, setActiveTab] = useState<"territory"|"beat"|"service"|"sequence">("territory");
   const [selectedRep, setSelectedRep] = useState("R1");
-  const [selectedDay, setSelectedDay] = useState(0);
 
   const tabs = [
     { id:"territory", en:"Territory Builder",    ar:"بناء المناطق" },
@@ -197,7 +160,7 @@ export default function RoutePlanningPage() {
               { icon:"⚖️", label:t("Workload Balance","توازن العبء",lang),   value:`${balanceScore}%`,        sub:"std dev < 14 customers", color:Number(balanceScore)>=80?"#4CAF50":"#FFA726" },
               { icon:"📅", label:t("Beat Frequency","تردد الزيارة",lang),    value:"3 types",                 sub:"Weekly · Bi-weekly · Monthly", color:"#1A8A8A" },
               { icon:"⏱️", label:t("Avg Svc Time","متوسط وقت الخدمة",lang), value:"24 min",                  sub:"per customer stop", color:"#7B5EA7" },
-              { icon:"📍", label:t("Route Saving","توفير المسافة",lang),     value:`${saving}%`,              sub:`${distBefore-distAfter} km saved / day`, color:"#2EA064" },
+              { icon:"📍", label:t("Route Saving","توفير المسافة",lang),     value:"62%",                     sub:"Nearest-neighbor optimization",         color:"#2EA064" },
             ].map(k => (
               <div key={k.label} style={{ background:"var(--bg-card)", borderRadius:10, border:`1px solid ${k.color}22`, padding:"14px 16px", borderLeft:`4px solid ${k.color}` }}>
                 <div style={{ fontSize:18, marginBottom:4 }}>{k.icon}</div>
@@ -282,72 +245,47 @@ export default function RoutePlanningPage() {
                 })}
               </div>
 
-              {/* Territory detail + Radar */}
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, width:"100%", minWidth:0 }}>
-                {/* Visual territory map (SVG simulation) */}
-                <div style={{ background:"var(--bg-card)", borderRadius:10, border:`1px solid ${selectedRepData.color}33`, padding:"16px 20px", minWidth:0 }}>
-                  <div style={{ fontSize:13, fontWeight:800, color:selectedRepData.color, marginBottom:4 }}>
-                    {lang==="ar"?selectedRepData.nameAr:selectedRepData.name} — Territory Map
+              {/* Google Maps — Territory Builder */}
+              <div style={{ background:"var(--bg-card)", borderRadius:10, border:"1px solid rgba(201,168,76,0.15)", padding:"16px 20px", minWidth:0 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:12 }}>
+                  <div>
+                    <div style={{ fontSize:13, fontWeight:800, color:"#C9A84C" }}>
+                      🗺️ {t("Real Territory Map — Egypt","خريطة المناطق الحقيقية — مصر",lang)}
+                    </div>
+                    <div style={{ fontSize:10, color:"var(--text-muted)", marginTop:2 }}>
+                      {t("Click ✏️ Draw Territory to hand-draw boundaries · Click a polygon to select a rep","انقر ✏️ لرسم الحدود باليد · انقر على المنطقة لتحديد المندوب",lang)}
+                    </div>
                   </div>
-                  <div style={{ fontSize:10, color:"var(--text-muted)", marginBottom:12 }}>{selectedRepData.zone} · {selectedRepData.customers} customers</div>
-                  {/* SVG territory simulation */}
-                  <svg width="100%" viewBox="0 0 300 200" style={{ background:"rgba(255,255,255,0.02)", borderRadius:8, border:"1px solid rgba(255,255,255,0.05)" }}>
-                    {/* Grid */}
-                    {[40,80,120,160].map(y => <line key={`h${y}`} x1="0" y1={y} x2="300" y2={y} stroke="rgba(255,255,255,0.04)" />)}
-                    {[60,120,180,240].map(x => <line key={`v${x}`} x1={x} y1="0" x2={x} y2="200" stroke="rgba(255,255,255,0.04)" />)}
-                    {/* Territory polygon */}
-                    {selectedRepData.id==="R1" && <polygon points="30,20 180,10 260,80 220,160 80,180 20,100" fill={`${selectedRepData.color}18`} stroke={selectedRepData.color} strokeWidth="1.5" />}
-                    {selectedRepData.id==="R2" && <polygon points="60,30 200,20 270,90 240,170 100,190 40,110" fill={`${selectedRepData.color}18`} stroke={selectedRepData.color} strokeWidth="1.5" />}
-                    {selectedRepData.id==="R3" && <polygon points="20,40 160,15 250,70 210,155 70,175 15,95"  fill={`${selectedRepData.color}18`} stroke={selectedRepData.color} strokeWidth="1.5" />}
-                    {selectedRepData.id==="R4" && <polygon points="40,50 170,25 240,85 200,160 75,175 30,105" fill={`${selectedRepData.color}18`} stroke={selectedRepData.color} strokeWidth="1.5" />}
-                    {selectedRepData.id==="R5" && <polygon points="50,35 190,22 260,82 225,162 85,178 35,100" fill={`${selectedRepData.color}18`} stroke={selectedRepData.color} strokeWidth="1.5" />}
-                    {selectedRepData.id==="R6" && <polygon points="35,45 175,18 255,75 215,158 78,172 25,102" fill={`${selectedRepData.color}18`} stroke={selectedRepData.color} strokeWidth="1.5" />}
-                    {/* Customer dots */}
-                    {Array.from({length: Math.min(selectedRepData.customers, 30)}, (_,i) => {
-                      const seed = (i * 127 + selectedRepData.id.charCodeAt(1) * 31) % 1000;
-                      const cx = 40 + (seed % 220);
-                      const cy = 20 + ((seed * 7) % 160);
-                      const isGold = i < selectedRepData.gold;
-                      const isSilver = !isGold && i < selectedRepData.gold + selectedRepData.silver;
-                      const dotColor = isGold ? "#C9A84C" : isSilver ? "#9BA3B2" : selectedRepData.color;
-                      return <circle key={i} cx={cx} cy={cy} r={isGold?4:isSilver?3:2} fill={dotColor} opacity={0.85} />;
-                    })}
-                    {/* Depot */}
-                    <rect x="135" y="88" width="14" height="14" rx="2" fill="#E07B2A" opacity="0.9" />
-                    <text x="152" y="99" fontSize="8" fill="#9BA3B2">DC</text>
-                  </svg>
-                  <div style={{ display:"flex", gap:12, marginTop:10, flexWrap:"wrap" }}>
-                    {[{c:"#C9A84C",l:"Gold"},{c:"#9BA3B2",l:"Silver"},{c:selectedRepData.color,l:"Bronze"},{c:"#E07B2A",l:"Depot"}].map(l => (
-                      <div key={l.l} style={{ display:"flex", alignItems:"center", gap:4 }}>
-                        <div style={{ width:8, height:8, borderRadius:"50%", background:l.c }} />
-                        <span style={{ fontSize:9, color:"var(--text-muted)" }}>{l.l}</span>
-                      </div>
-                    ))}
+                  <div style={{ background:"var(--bg-card)", borderRadius:7, padding:"8px 12px", border:"1px solid rgba(46,160,100,0.2)" }}>
+                    <div style={{ fontSize:10, color:"var(--text-muted)" }}>{t("Balance Score","التوازن",lang)}</div>
+                    <div style={{ fontSize:18, fontWeight:900, color: Number(balanceScore)>=80?"#4CAF50":"#FFA726" }}>{balanceScore}%</div>
+                    <div style={{ fontSize:8, color:"var(--text-muted)" }}>σ = {workloadStd.toFixed(1)} cust</div>
                   </div>
                 </div>
+                <GoogleMapsPanel mode="territory" lang={lang} />
+              </div>
 
-                {/* Workload radar */}
-                <div style={{ background:"var(--bg-card)", borderRadius:10, border:"1px solid rgba(46,160,100,0.2)", padding:"16px 20px", minWidth:0 }}>
-                  <div style={{ fontSize:13, fontWeight:800, color:"#2EA064", marginBottom:4 }}>
-                    {t("Workload Balance — All Reps","توازن العبء — جميع المندوبين",lang)}
-                  </div>
-                  <div style={{ fontSize:10, color:"var(--text-muted)", marginBottom:8 }}>
-                    {t("Balance Score","درجة التوازن",lang)}: <strong style={{color: Number(balanceScore)>=80?"#4CAF50":"#FFA726"}}>{balanceScore}%</strong>
-                    &nbsp;·&nbsp;σ = {workloadStd.toFixed(1)} customers
-                  </div>
-                  <ResponsiveContainer width="100%" height={220}>
-                    <BarChart data={REPS.map(r=>({name:r.name.split(" ")[0], customers:r.customers, target:Math.round(avgCustomers)}))}
-                      margin={{top:4,right:10,bottom:0,left:0}}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(46,160,100,0.08)" />
-                      <XAxis dataKey="name" tick={{fill:"#9BA3B2",fontSize:10}} />
-                      <YAxis tick={{fill:"#9BA3B2",fontSize:10}} />
-                      <Tooltip contentStyle={{background:"#1C2435",border:"1px solid rgba(46,160,100,0.3)",borderRadius:8,fontSize:11}} />
-                      <Legend wrapperStyle={{fontSize:11}} />
-                      <Bar dataKey="customers" name="Customers" fill="#2EA064" radius={[4,4,0,0]} />
-                      <Bar dataKey="target"    name="Avg Target" fill="#C9A84C" opacity={0.5} radius={[4,4,0,0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
+              {/* Workload balance chart */}
+              <div style={{ background:"var(--bg-card)", borderRadius:10, border:"1px solid rgba(46,160,100,0.2)", padding:"16px 20px", minWidth:0, width:"100%", boxSizing:"border-box" }}>
+                <div style={{ fontSize:13, fontWeight:800, color:"#2EA064", marginBottom:4 }}>
+                  {t("Workload Balance — All Reps","توازن العبء — جميع المندوبين",lang)}
                 </div>
+                <div style={{ fontSize:10, color:"var(--text-muted)", marginBottom:8 }}>
+                  {t("Balance Score","درجة التوازن",lang)}: <strong style={{color: Number(balanceScore)>=80?"#4CAF50":"#FFA726"}}>{balanceScore}%</strong>
+                  &nbsp;·&nbsp;σ = {workloadStd.toFixed(1)} customers
+                </div>
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={REPS.map(r=>({name:r.name.split(" ")[0], customers:r.customers, target:Math.round(avgCustomers)}))}
+                    margin={{top:4,right:10,bottom:0,left:0}}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(46,160,100,0.08)" />
+                    <XAxis dataKey="name" tick={{fill:"#9BA3B2",fontSize:10}} />
+                    <YAxis tick={{fill:"#9BA3B2",fontSize:10}} />
+                    <Tooltip contentStyle={{background:"#1C2435",border:"1px solid rgba(46,160,100,0.3)",borderRadius:8,fontSize:11}} />
+                    <Legend wrapperStyle={{fontSize:11}} />
+                    <Bar dataKey="customers" name="Customers" fill="#2EA064" radius={[4,4,0,0]} />
+                    <Bar dataKey="target"    name="Avg Target" fill="#C9A84C" opacity={0.5} radius={[4,4,0,0]} />
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
             </div>
           )}
@@ -599,132 +537,22 @@ export default function RoutePlanningPage() {
           {activeTab === "sequence" && (
             <div style={{ display:"flex", flexDirection:"column", gap:16, width:"100%", minWidth:0 }}>
 
-              {/* Before/After comparison banner */}
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:12 }}>
-                {[
-                  { label:"Before Optimization",  value:`${distBefore} km`, color:"#EF5350", icon:"📍" },
-                  { label:"After Sequencing",      value:`${distAfter} km`,  color:"#4CAF50", icon:"🗺️" },
-                  { label:"Distance Saved",        value:`${distBefore-distAfter} km`, color:"#2EA064", icon:"💰" },
-                  { label:"Improvement",           value:`${saving}%`,      color:"#C9A84C", icon:"📈" },
-                ].map(k => (
-                  <div key={k.label} style={{ background:"var(--bg-card)", borderRadius:10, border:`1px solid ${k.color}22`, padding:"14px", textAlign:"center" }}>
-                    <div style={{ fontSize:20 }}>{k.icon}</div>
-                    <div style={{ fontSize:22, fontWeight:900, color:k.color, marginTop:4 }}>{k.value}</div>
-                    <div style={{ fontSize:10, color:"var(--text-muted)", marginTop:2 }}>{k.label}</div>
-                  </div>
-                ))}
+              {/* Optimization info banner */}
+              <div style={{ padding:"12px 16px", background:"rgba(76,175,80,0.06)", border:"1px solid rgba(76,175,80,0.2)", borderRadius:8, fontSize:11, color:"var(--text-muted)" }}>
+                🔢 <strong style={{color:"#4CAF50"}}>Nearest-Neighbor Heuristic</strong> applied to real GPS coordinates (Haversine distance).
+                &nbsp;Toggle 🔴 Before / 🟢 After to see route optimization on the live map.
               </div>
 
-              {/* Rep / Day selector */}
-              <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
-                <span style={{ fontSize:11, color:"var(--text-muted)", fontWeight:700 }}>Rep:</span>
-                {REPS.map(r => (
-                  <button key={r.id} onClick={() => setSelectedRep(r.id)} style={{
-                    padding:"4px 12px", fontSize:10, fontWeight:700, borderRadius:5, cursor:"pointer",
-                    border:`1px solid ${r.color}44`, background: selectedRep===r.id ? `${r.color}22` : "transparent",
-                    color: selectedRep===r.id ? r.color : "var(--text-muted)",
-                  }}>{lang==="ar"?r.nameAr.split(" ")[0]:r.name.split(" ")[0]}</button>
-                ))}
-                <span style={{ fontSize:11, color:"var(--text-muted)", fontWeight:700, marginLeft:12 }}>Day:</span>
-                {DAYS.map((d,i) => (
-                  <button key={d} onClick={() => setSelectedDay(i)} style={{
-                    padding:"4px 12px", fontSize:10, fontWeight:700, borderRadius:5, cursor:"pointer",
-                    border:"1px solid rgba(224,123,42,0.3)", background: selectedDay===i ? "rgba(224,123,42,0.2)" : "transparent",
-                    color: selectedDay===i ? "#E07B2A" : "var(--text-muted)",
-                  }}>{lang==="ar"?DAYS_AR[i]:d}</button>
-                ))}
-              </div>
 
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, width:"100%", minWidth:0 }}>
-                {/* Before */}
-                <div style={{ background:"var(--bg-card)", borderRadius:10, border:"1px solid rgba(239,83,80,0.2)", padding:"16px 20px", minWidth:0 }}>
-                  <div style={{ fontSize:12, fontWeight:800, color:"#EF5350", marginBottom:4 }}>
-                    Before — Unoptimized Order ({distBefore} km)
-                  </div>
-                  <div style={{ fontSize:10, color:"var(--text-muted)", marginBottom:12 }}>Random entry order — significant backtracking</div>
-                  {/* SVG route map - Before */}
-                  <svg width="100%" viewBox="0 0 300 200" style={{ background:"rgba(255,255,255,0.02)", borderRadius:8, border:"1px solid rgba(239,83,80,0.15)", marginBottom:12 }}>
-                    {/* Grid */}
-                    {[50,100,150].map(y => <line key={`bh${y}`} x1="0" y1={y} x2="300" y2={y} stroke="rgba(255,255,255,0.03)" />)}
-                    {[75,150,225].map(x => <line key={`bv${x}`} x1={x} y1="0" x2={x} y2="200" stroke="rgba(255,255,255,0.03)" />)}
-                    {/* Route lines before */}
-                    {STOPS_BEFORE.map((s, i) => {
-                      const prev = i===0 ? {x:0, y:100} : {x:STOPS_BEFORE[i-1].x*2.8+10, y:STOPS_BEFORE[i-1].y*1.6+20};
-                      const curr = {x:s.x*2.8+10, y:s.y*1.6+20};
-                      return <line key={i} x1={prev.x} y1={prev.y} x2={curr.x} y2={curr.y} stroke="#EF5350" strokeWidth="1" opacity="0.5" strokeDasharray="3 2" />;
-                    })}
-                    {/* Customer dots */}
-                    {STOPS_BEFORE.map((s, i) => (
-                      <g key={s.id}>
-                        <circle cx={s.x*2.8+10} cy={s.y*1.6+20} r="5" fill={typeColor(s.type)} opacity="0.9" />
-                        <text x={s.x*2.8+16} y={s.y*1.6+24} fontSize="6" fill="#9BA3B2">{i+1}</text>
-                      </g>
-                    ))}
-                    {/* Depot */}
-                    <rect x="5" y="88" width="10" height="10" rx="2" fill="#E07B2A" />
-                    <text x="16" y="96" fontSize="7" fill="#E07B2A">DC</text>
-                  </svg>
-                  {/* Stop list */}
-                  <div style={{ maxHeight:280, overflowY:"auto" }}>
-                    {STOPS_BEFORE.map((s, i) => (
-                      <div key={s.id} style={{ display:"flex", alignItems:"center", gap:8, padding:"5px 0", borderBottom:"1px solid rgba(255,255,255,0.03)" }}>
-                        <div style={{ width:20, height:20, borderRadius:"50%", background:"rgba(239,83,80,0.15)", border:"1px solid rgba(239,83,80,0.3)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:9, fontWeight:800, color:"#EF5350", flexShrink:0 }}>{i+1}</div>
-                        <div style={{ width:8, height:8, borderRadius:"50%", background:typeColor(s.type), flexShrink:0 }} />
-                        <div style={{ flex:1, minWidth:0 }}>
-                          <div style={{ fontSize:10, fontWeight:600, color:"var(--text)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{s.name}</div>
-                          <div style={{ fontSize:8, color:"var(--text-muted)" }}>{s.type} · {s.window} · {s.svcMin}min</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+              {/* Google Maps — Day Sequencing */}
+              <div style={{ background:"var(--bg-card)", borderRadius:10, border:"1px solid rgba(201,168,76,0.15)", padding:"16px 20px", minWidth:0 }}>
+                <div style={{ fontSize:13, fontWeight:800, color:"#C9A84C", marginBottom:4 }}>
+                  🗺️ {t("Route Map — Real Cairo Coordinates","خريطة المسار — إحداثيات القاهرة الحقيقية",lang)}
                 </div>
-
-                {/* After */}
-                <div style={{ background:"var(--bg-card)", borderRadius:10, border:"1px solid rgba(46,160,100,0.25)", padding:"16px 20px", minWidth:0 }}>
-                  <div style={{ fontSize:12, fontWeight:800, color:"#4CAF50", marginBottom:4 }}>
-                    After — Nearest-Neighbor Optimized ({distAfter} km)
-                  </div>
-                  <div style={{ fontSize:10, color:"var(--text-muted)", marginBottom:12 }}>Proximity sequencing + time-window compliance</div>
-                  {/* SVG route map - After */}
-                  <svg width="100%" viewBox="0 0 300 200" style={{ background:"rgba(255,255,255,0.02)", borderRadius:8, border:"1px solid rgba(46,160,100,0.15)", marginBottom:12 }}>
-                    {[50,100,150].map(y => <line key={`ah${y}`} x1="0" y1={y} x2="300" y2={y} stroke="rgba(255,255,255,0.03)" />)}
-                    {[75,150,225].map(x => <line key={`av${x}`} x1={x} y1="0" x2={x} y2="200" stroke="rgba(255,255,255,0.03)" />)}
-                    {/* Route lines after */}
-                    {STOPS_AFTER.map((s, i) => {
-                      const prev = i===0 ? {x:0, y:100} : {x:STOPS_AFTER[i-1].x*2.8+10, y:STOPS_AFTER[i-1].y*1.6+20};
-                      const curr = {x:s.x*2.8+10, y:s.y*1.6+20};
-                      return <line key={i} x1={prev.x} y1={prev.y} x2={curr.x} y2={curr.y} stroke="#4CAF50" strokeWidth="1.5" opacity="0.7" />;
-                    })}
-                    {STOPS_AFTER.map((s, i) => (
-                      <g key={s.id}>
-                        <circle cx={s.x*2.8+10} cy={s.y*1.6+20} r="5" fill={typeColor(s.type)} opacity="0.9" />
-                        <text x={s.x*2.8+16} y={s.y*1.6+24} fontSize="6" fill="#9BA3B2">{i+1}</text>
-                      </g>
-                    ))}
-                    <rect x="5" y="88" width="10" height="10" rx="2" fill="#E07B2A" />
-                    <text x="16" y="96" fontSize="7" fill="#E07B2A">DC</text>
-                  </svg>
-                  {/* Stop list */}
-                  <div style={{ maxHeight:280, overflowY:"auto" }}>
-                    {STOPS_AFTER.map((s, i) => {
-                      const origIdx = STOPS_BEFORE.findIndex(b => b.id === s.id);
-                      const moved = origIdx !== i;
-                      return (
-                        <div key={s.id} style={{ display:"flex", alignItems:"center", gap:8, padding:"5px 0", borderBottom:"1px solid rgba(255,255,255,0.03)" }}>
-                          <div style={{ width:20, height:20, borderRadius:"50%", background:"rgba(46,160,100,0.15)", border:"1px solid rgba(46,160,100,0.3)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:9, fontWeight:800, color:"#4CAF50", flexShrink:0 }}>{i+1}</div>
-                          <div style={{ width:8, height:8, borderRadius:"50%", background:typeColor(s.type), flexShrink:0 }} />
-                          <div style={{ flex:1, minWidth:0 }}>
-                            <div style={{ fontSize:10, fontWeight:600, color:"var(--text)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-                              {s.name}
-                              {moved && <span style={{ marginLeft:4, fontSize:8, color:"#4CAF50" }}>↑ {origIdx+1}→{i+1}</span>}
-                            </div>
-                            <div style={{ fontSize:8, color:"var(--text-muted)" }}>{s.type} · {s.window} · {s.svcMin}min</div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                <div style={{ fontSize:10, color:"var(--text-muted)", marginBottom:12 }}>
+                  {t("Ahmed Hassan · Cairo North · Saturday · Nearest-neighbor optimization","أحمد حسن · القاهرة شمال · السبت · تحسين أقرب جار",lang)}
                 </div>
+                <GoogleMapsPanel mode="route" lang={lang} />
               </div>
 
               {/* Algorithm note */}
